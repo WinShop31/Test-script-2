@@ -95,7 +95,7 @@ AutoGrabRareButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
 AutoGrabRareButton.Text = "Auto Grab Rare Egg: OFF"
 AutoGrabRareButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 AutoGrabRareButton.TextSize = 16
-AutoFarmAllButton.Font = Enum.Font.Gotham
+AutoGrabRareButton.Font = Enum.Font.Gotham
 AutoGrabRareButton.Parent = EggFarmTab
 
 local AutoGrabRareButtonCorner = Instance.new("UICorner")
@@ -154,7 +154,7 @@ local NotificationTitle = Instance.new("TextLabel")
 NotificationTitle.Size = UDim2.new(1, 0, 0, 20)
 NotificationTitle.Position = UDim2.new(0, 0, 0, 5)
 NotificationTitle.BackgroundTransparency = 1
-NotificationTitle.Text = "Rare Egg Spawned!"
+NotificationTitle.Text = "Rare Item Spawned!"
 NotificationTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
 NotificationTitle.TextSize = 16
 NotificationTitle.Font = Enum.Font.GothamBold
@@ -164,7 +164,7 @@ local NotificationText = Instance.new("TextLabel")
 NotificationText.Size = UDim2.new(1, 0, 0, 30)
 NotificationText.Position = UDim2.new(0, 0, 0, 25)
 NotificationText.BackgroundTransparency = 1
-NotificationText.Text = "A rare egg has spawned!"
+NotificationText.Text = "A rare item has spawned!"
 NotificationText.TextColor3 = Color3.fromRGB(255, 255, 255)
 NotificationText.TextSize = 14
 NotificationText.Font = Enum.Font.Gotham
@@ -176,17 +176,18 @@ local isAutoGrabbingRare = false
 local isESPEnabled = false
 local espConnections = {}
 local eggHighlights = {}
-local knownEggs = {} -- Для отслеживания уже найденных яиц
+local knownItems = {} -- Для отслеживания уже найденных предметов
 
 -- Переменные для перетаскивания кнопки
 local isDragging = false
 local dragStart = nil
 local startPos = nil
 
--- Список редких яиц из Easter Event 2025
-local rareEggNames = {
+-- Список редких предметов из Easter Event 2025
+local rareItemNames = {
     "Diamond Egg", "Police Egg", "Construction Egg", "Office Egg", "Doctor Egg",
-    "Military Egg", "Experiment Egg", "Speedy Egg", "Scientist Egg", "Robot Egg"
+    "Military Egg", "Experiment Egg", "Speedy Egg", "Scientist Egg", "Robot Egg",
+    "Taxi" -- Добавляем "Таксишку"
 }
 
 -- Функция для переключения вкладок
@@ -219,8 +220,8 @@ local function isInLobby()
 end
 
 -- Функция для отображения уведомления
-local function showNotification(eggName)
-    NotificationText.Text = eggName .. " has spawned!"
+local function showNotification(itemName)
+    NotificationText.Text = itemName .. " has spawned!"
     NotificationFrame.Visible = true
 
     -- Анимация появления
@@ -238,44 +239,45 @@ local function showNotification(eggName)
     NotificationFrame.Visible = false
 end
 
--- Функция для поиска ближайшего яйца
-local function findNearestEgg(isRareOnly)
+-- Функция для поиска ближайшего предмета
+local function findNearestItem(isRareOnly)
     local character = LocalPlayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
 
     local humanoidRootPart = character.HumanoidRootPart
-    local closestEgg = nil
+    local closestItem = nil
     local closestDistance = math.huge
 
-    for _, obj in pairs(Workspace:GetChildren()) do -- Проверяем только прямых потомков Workspace для оптимизации
-        if obj:IsA("BasePart") and (obj:FindFirstChildOfClass("ProximityPrompt") or obj:FindFirstChild("TouchInterest")) then
-            local isEgg = obj.Name:lower():find("egg") or obj.Name:lower():find("peppermint")
-            local isRareEgg = false
-            for _, rareName in pairs(rareEggNames) do
+    for _, obj in pairs(Workspace:GetChildren()) do
+        if obj:IsA("BasePart") or obj:IsA("Model") then
+            local isItem = obj.Name:lower():find("egg") or obj.Name:lower():find("peppermint") or obj.Name == "Taxi"
+            local isRareItem = false
+            for _, rareName in pairs(rareItemNames) do
                 if obj.Name == rareName then
-                    isRareEgg = true
+                    isRareItem = true
                     break
                 end
             end
 
-            if isEgg or isRareEgg then
-                if isRareOnly and not isRareEgg then
+            if isItem or isRareItem then
+                if isRareOnly and not isRareItem then
                     continue
                 end
-                local distance = (obj.Position - humanoidRootPart.Position).Magnitude
+                local targetPosition = obj:IsA("Model") and obj:GetPivot().Position or obj.Position
+                local distance = (targetPosition - humanoidRootPart.Position).Magnitude
                 if distance < closestDistance then
                     closestDistance = distance
-                    closestEgg = obj
+                    closestItem = obj
                 end
             end
         end
     end
 
-    return closestEgg
+    return closestItem
 end
 
--- Функция для автосбора всех яиц
-local function autoFarmAllEggs()
+-- Функция для автосбора всех предметов
+local function autoFarmAllItems()
     while isAutoFarmingAll do
         local character = LocalPlayer.Character
         if not character or not character:FindFirstChild("HumanoidRootPart") then
@@ -289,19 +291,20 @@ local function autoFarmAllEggs()
         end
 
         local humanoidRootPart = character.HumanoidRootPart
-        local nearestEgg = findNearestEgg(false)
+        local nearestItem = findNearestItem(false)
 
-        if nearestEgg then
-            humanoidRootPart.CFrame = CFrame.new(nearestEgg.Position + Vector3.new(0, 3, 0))
+        if nearestItem then
+            local targetPosition = nearestItem:IsA("Model") and nearestItem:GetPivot().Position or nearestItem.Position
+            humanoidRootPart.CFrame = CFrame.new(targetPosition + Vector3.new(0, 3, 0))
             wait(0.2)
 
-            if nearestEgg:FindFirstChildOfClass("ProximityPrompt") then
-                fireproximityprompt(nearestEgg:FindFirstChildOfClass("ProximityPrompt"))
-            elseif nearestEgg:FindFirstChild("TouchInterest") then
-                humanoidRootPart.CFrame = CFrame.new(nearestEgg.Position)
+            if nearestItem:FindFirstChildOfClass("ProximityPrompt") then
+                fireproximityprompt(nearestItem:FindFirstChildOfClass("ProximityPrompt"))
+            elseif nearestItem:FindFirstChild("TouchInterest") then
+                humanoidRootPart.CFrame = CFrame.new(targetPosition)
             end
 
-            nearestEgg:Destroy()
+            nearestItem:Destroy()
             wait(0.3)
         else
             wait(0.5)
@@ -309,8 +312,8 @@ local function autoFarmAllEggs()
     end
 end
 
--- Функция для автосбора редких яиц с телепортацией
-local function autoGrabRareEgg()
+-- Функция для автосбора редких предметов с телепортацией
+local function autoGrabRareItem()
     while isAutoGrabbingRare do
         local character = LocalPlayer.Character
         if not character or not character:FindFirstChild("HumanoidRootPart") then
@@ -324,17 +327,18 @@ local function autoGrabRareEgg()
         end
 
         local humanoidRootPart = character.HumanoidRootPart
-        local nearestRareEgg = findNearestEgg(true)
+        local nearestRareItem = findNearestItem(true)
 
-        if nearestRareEgg then
-            humanoidRootPart.CFrame = CFrame.new(nearestRareEgg.Position + Vector3.new(0, 3, 0))
+        if nearestRareItem then
+            local targetPosition = nearestRareItem:IsA("Model") and nearestRareItem:GetPivot().Position or nearestRareItem.Position
+            humanoidRootPart.CFrame = CFrame.new(targetPosition + Vector3.new(0, 3, 0))
             wait(0.5)
-            if nearestRareEgg:FindFirstChildOfClass("ProximityPrompt") then
-                fireproximityprompt(nearestRareEgg:FindFirstChildOfClass("ProximityPrompt"))
-            elseif nearestRareEgg:FindFirstChild("TouchInterest") then
-                humanoidRootPart.CFrame = CFrame.new(nearestRareEgg.Position)
+            if nearestRareItem:FindFirstChildOfClass("ProximityPrompt") then
+                fireproximityprompt(nearestRareItem:FindFirstChildOfClass("ProximityPrompt"))
+            elseif nearestRareItem:FindFirstChild("TouchInterest") then
+                humanoidRootPart.CFrame = CFrame.new(targetPosition)
             end
-            nearestRareEgg:Destroy()
+            nearestRareItem:Destroy()
             wait(0.5)
         else
             wait(1)
@@ -342,28 +346,28 @@ local function autoGrabRareEgg()
     end
 end
 
--- Функция для обновления WH (ESP) яиц
-local function updateEggESP()
+-- Функция для обновления WH (ESP) предметов
+local function updateItemESP()
     for _, highlight in pairs(eggHighlights) do
         highlight:Destroy()
     end
     eggHighlights = {}
 
     for _, obj in pairs(Workspace:GetChildren()) do
-        if obj:IsA("BasePart") and (obj:FindFirstChildOfClass("ProximityPrompt") or obj:FindFirstChild("TouchInterest")) then
-            local isRareEgg = false
-            for _, rareName in pairs(rareEggNames) do
+        if obj:IsA("BasePart") or obj:IsA("Model") then
+            local isRareItem = false
+            for _, rareName in pairs(rareItemNames) do
                 if obj.Name == rareName then
-                    isRareEgg = true
+                    isRareItem = true
                     break
                 end
             end
 
-            if isRareEgg then
+            if isRareItem then
                 local highlight = Instance.new("Highlight")
-                highlight.Name = "EggHighlight"
+                highlight.Name = "ItemHighlight"
                 highlight.Adornee = obj
-                highlight.FillTransparency = 0.3 -- Уменьшенная прозрачность для лучшей видимости
+                highlight.FillTransparency = 0.3
                 highlight.OutlineTransparency = 0
                 highlight.FillColor = Color3.fromRGB(255, 165, 0)
                 highlight.Parent = obj
@@ -373,13 +377,13 @@ local function updateEggESP()
     end
 end
 
--- Функция для отслеживания спавна редких яиц и показа уведомлений
-local function monitorRareEggs()
+-- Функция для отслеживания спавна редких предметов и показа уведомлений
+local function monitorRareItems()
     Workspace.DescendantAdded:Connect(function(descendant)
-        if descendant:IsA("BasePart") and (descendant:FindFirstChildOfClass("ProximityPrompt") or descendant:FindFirstChild("TouchInterest")) then
-            for _, rareName in pairs(rareEggNames) do
-                if descendant.Name == rareName and not knownEggs[descendant] then
-                    knownEggs[descendant] = true
+        if descendant:IsA("BasePart") or descendant:IsA("Model") then
+            for _, rareName in pairs(rareItemNames) do
+                if descendant.Name == rareName and not knownItems[descendant] then
+                    knownItems[descendant] = true
                     spawn(function()
                         showNotification(rareName)
                     end)
@@ -390,8 +394,8 @@ local function monitorRareEggs()
     end)
 
     Workspace.DescendantRemoving:Connect(function(descendant)
-        if knownEggs[descendant] then
-            knownEggs[descendant] = nil
+        if knownItems[descendant] then
+            knownItems[descendant] = nil
         end
     end)
 end
@@ -447,7 +451,7 @@ local function toggleESP()
                 end
             end
 
-            updateEggESP()
+            updateItemESP()
         end
 
         updateESP()
@@ -539,21 +543,21 @@ AutoFarmAllButton.MouseButton1Click:Connect(function()
     AutoFarmAllButton.BackgroundColor3 = isAutoFarmingAll and Color3.fromRGB(0, 255, 120) or Color3.fromRGB(0, 120, 255)
     if isAutoFarmingAll then
         isAutoGrabbingRare = false
-        AutoGrabRareButton.Text = "Auto Grab Rare Egg: OFF"
+        AutoGrabRareButton.Text = "Auto Grab Rare Item: OFF"
         AutoGrabRareButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-        spawn(autoFarmAllEggs)
+        spawn(autoFarmAllItems)
     end
 end)
 
 AutoGrabRareButton.MouseButton1Click:Connect(function()
     isAutoGrabbingRare = not isAutoGrabbingRare
-    AutoGrabRareButton.Text = "Auto Grab Rare Egg: " .. (isAutoGrabbingRare and "ON" or "OFF")
+    AutoGrabRareButton.Text = "Auto Grab Rare Item: " .. (isAutoGrabbingRare and "ON" or "OFF")
     AutoGrabRareButton.BackgroundColor3 = isAutoGrabbingRare and Color3.fromRGB(0, 255, 120) or Color3.fromRGB(0, 120, 255)
     if isAutoGrabbingRare then
         isAutoFarmingAll = false
         AutoFarmAllButton.Text = "Auto Farm All Eggs: OFF"
         AutoFarmAllButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-        spawn(autoGrabRareEgg)
+        spawn(autoGrabRareItem)
     end
 end)
 
@@ -565,12 +569,12 @@ ToggleButton.MouseButton1Click:Connect(toggleMenu)
 LocalPlayer.CharacterAdded:Connect(function()
     wait(1)
     if isAutoFarmingAll and not isInLobby() then
-        spawn(autoFarmAllEggs)
+        spawn(autoFarmAllItems)
     end
 end)
 
--- Запуск мониторинга редких яиц
-monitorRareEggs()
+-- Запуск мониторинга редких предметов
+monitorRareItems()
 
 -- Уведомление о запуске скрипта
 print("MM2 Easter Egg Farm Script with GUI by Fills is running!")
