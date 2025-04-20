@@ -95,7 +95,7 @@ AutoGrabRareButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
 AutoGrabRareButton.Text = "Auto Grab Rare Egg: OFF"
 AutoGrabRareButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 AutoGrabRareButton.TextSize = 16
-AutoGrabRareButton.Font = Enum.Font.Gotham
+AutoFarmAllButton.Font = Enum.Font.Gotham
 AutoGrabRareButton.Parent = EggFarmTab
 
 local AutoGrabRareButtonCorner = Instance.new("UICorner")
@@ -224,7 +224,7 @@ local function showNotification(eggName)
     NotificationFrame.Visible = true
 
     -- Анимация появления
-    local tweenIn = TweenService:Create(NotificationFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection Out), {Position = UDim2.new(1, -260, 0, 10)})
+    local tweenIn = TweenService:Create(NotificationFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(1, -260, 0, 10)})
     tweenIn:Play()
     tweenIn.Completed:Wait()
 
