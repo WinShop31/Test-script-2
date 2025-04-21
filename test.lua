@@ -1,580 +1,679 @@
--- Скрипт для Roblox: Murder Mystery 2 - Автосбор пасхальных яиц с улучшенным GUI, WH и уведомлениями (by Fills)
+local TextChatService = game:GetService("TextChatService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local LocalPlayer = Players.LocalPlayer
+local ContextActionService = game:GetService("ContextActionService")
+local CoreGui = game:GetService("CoreGui")
+local HttpService = game:GetService("HttpService")
+local MarketplaceService = game:GetService("MarketplaceService")
 
--- Создание GUI
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Parent = game.CoreGui
-ScreenGui.Name = "MM2EggFarmGui"
+local INVISIBLE_CHAR = "\u{001E}"
+local NEWLINE = "\u{000D}"
+local PRESET_FILE_NAME = "drawing_presets.json"
+local PREMIUM_GAMEPASS_ID = 1170613566
 
--- Основной фрейм хаба
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 300, 0, 300)
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -150)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-MainFrame.BorderSizePixel = 0
-MainFrame.Visible = false
-MainFrame.Parent = ScreenGui
+-- Проверка премиум-статуса
+local function isPremiumPlayer()
+    local success, hasPass = pcall(function()
+        return MarketplaceService:UserOwnsGamePassAsync(Players.LocalPlayer.UserId, PREMIUM_GAMEPASS_ID)
+    end)
+    return success and hasPass
+end
 
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 10)
-UICorner.Parent = MainFrame
-
-local UIShadow = Instance.new("UIStroke")
-UIShadow.Thickness = 2
-UIShadow.Color = Color3.fromRGB(0, 0, 0)
-UIShadow.Transparency = 0.5
-UIShadow.Parent = MainFrame
-
--- Заголовок хаба
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 40)
-Title.Position = UDim2.new(0, 0, 0, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "MM2 Egg Farm by Fills"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 20
-Title.Font = Enum.Font.GothamBold
-Title.Parent = MainFrame
-
--- Кнопка переключения на вкладку Egg Farm
-local EggFarmTabButton = Instance.new("TextButton")
-EggFarmTabButton.Size = UDim2.new(0.5, 0, 0, 40)
-EggFarmTabButton.Position = UDim2.new(0, 0, 0, 40)
-EggFarmTabButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-EggFarmTabButton.Text = "Egg Farm"
-EggFarmTabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-EggFarmTabButton.TextSize = 16
-EggFarmTabButton.Font = Enum.Font.Gotham
-EggFarmTabButton.Parent = MainFrame
-
--- Кнопка переключения на вкладку Safety
-local SafetyTabButton = Instance.new("TextButton")
-SafetyTabButton.Size = UDim2.new(0.5, 0, 0, 40)
-SafetyTabButton.Position = UDim2.new(0.5, 0, 0, 40)
-SafetyTabButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-SafetyTabButton.Text = "Safety"
-SafetyTabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-SafetyTabButton.TextSize = 16
-SafetyTabButton.Font = Enum.Font.Gotham
-SafetyTabButton.Parent = MainFrame
-
--- Вкладка Egg Farm
-local EggFarmTab = Instance.new("Frame")
-EggFarmTab.Size = UDim2.new(1, 0, 1, -80)
-EggFarmTab.Position = UDim2.new(0, 0, 0, 80)
-EggFarmTab.BackgroundTransparency = 1
-EggFarmTab.Visible = true
-EggFarmTab.Parent = MainFrame
-
--- Кнопка Auto Farm All Eggs
-local AutoFarmAllButton = Instance.new("TextButton")
-AutoFarmAllButton.Size = UDim2.new(0, 200, 0, 50)
-AutoFarmAllButton.Position = UDim2.new(0.5, -100, 0, 30)
-AutoFarmAllButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-AutoFarmAllButton.Text = "Auto Farm All Eggs: OFF"
-AutoFarmAllButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-AutoFarmAllButton.TextSize = 16
-AutoFarmAllButton.Font = Enum.Font.Gotham
-AutoFarmAllButton.Parent = EggFarmTab
-
-local AutoFarmAllButtonCorner = Instance.new("UICorner")
-AutoFarmAllButtonCorner.CornerRadius = UDim.new(0, 8)
-AutoFarmAllButtonCorner.Parent = AutoFarmAllButton
-
--- Кнопка Auto Grab Rare Egg
-local AutoGrabRareButton = Instance.new("TextButton")
-AutoGrabRareButton.Size = UDim2.new(0, 200, 0, 50)
-AutoGrabRareButton.Position = UDim2.new(0.5, -100, 0, 90)
-AutoGrabRareButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-AutoGrabRareButton.Text = "Auto Grab Rare Egg: OFF"
-AutoGrabRareButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-AutoGrabRareButton.TextSize = 16
-AutoGrabRareButton.Font = Enum.Font.Gotham
-AutoGrabRareButton.Parent = EggFarmTab
-
-local AutoGrabRareButtonCorner = Instance.new("UICorner")
-AutoGrabRareButtonCorner.CornerRadius = UDim.new(0, 8)
-AutoGrabRareButtonCorner.Parent = AutoGrabRareButton
-
--- Вкладка Safety
-local SafetyTab = Instance.new("Frame")
-SafetyTab.Size = UDim2.new(1, 0, 1, -80)
-SafetyTab.Position = UDim2.new(0, 0, 0, 80)
-SafetyTab.BackgroundTransparency = 1
-SafetyTab.Visible = false
-SafetyTab.Parent = MainFrame
-
--- Кнопка ESP
-local ESPButton = Instance.new("TextButton")
-ESPButton.Size = UDim2.new(0, 200, 0, 50)
-ESPButton.Position = UDim2.new(0.5, -100, 0, 30)
-ESPButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-ESPButton.Text = "ESP: OFF"
-ESPButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ESPButton.TextSize = 16
-ESPButton.Font = Enum.Font.Gotham
-ESPButton.Parent = SafetyTab
-
-local ESPButtonCorner = Instance.new("UICorner")
-ESPButtonCorner.CornerRadius = UDim.new(0, 8)
-ESPButtonCorner.Parent = ESPButton
-
--- Кнопка открытия/закрытия хаба
-local ToggleButton = Instance.new("ImageButton")
-ToggleButton.Size = UDim2.new(0, 50, 0, 50)
-ToggleButton.Position = UDim2.new(0, 10, 0, 10)
-ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-ToggleButton.Image = "rbxassetid://76737084372258"
-ToggleButton.Parent = ScreenGui
-
-local ToggleButtonCorner = Instance.new("UICorner")
-ToggleButtonCorner.CornerRadius = UDim.new(0, 25)
-ToggleButtonCorner.Parent = ToggleButton
-
--- GUI для уведомлений в стиле достижений Minecraft
-local NotificationFrame = Instance.new("Frame")
-NotificationFrame.Size = UDim2.new(0, 250, 0, 60)
-NotificationFrame.Position = UDim2.new(1, -260, 0, 10)
-NotificationFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-NotificationFrame.BorderSizePixel = 0
-NotificationFrame.Visible = false
-NotificationFrame.Parent = ScreenGui
-
-local NotificationCorner = Instance.new("UICorner")
-NotificationCorner.CornerRadius = UDim.new(0, 8)
-NotificationCorner.Parent = NotificationFrame
-
-local NotificationTitle = Instance.new("TextLabel")
-NotificationTitle.Size = UDim2.new(1, 0, 0, 20)
-NotificationTitle.Position = UDim2.new(0, 0, 0, 5)
-NotificationTitle.BackgroundTransparency = 1
-NotificationTitle.Text = "Rare Item Spawned!"
-NotificationTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
-NotificationTitle.TextSize = 16
-NotificationTitle.Font = Enum.Font.GothamBold
-NotificationTitle.Parent = NotificationFrame
-
-local NotificationText = Instance.new("TextLabel")
-NotificationText.Size = UDim2.new(1, 0, 0, 30)
-NotificationText.Position = UDim2.new(0, 0, 0, 25)
-NotificationText.BackgroundTransparency = 1
-NotificationText.Text = "A rare item has spawned!"
-NotificationText.TextColor3 = Color3.fromRGB(255, 255, 255)
-NotificationText.TextSize = 14
-NotificationText.Font = Enum.Font.Gotham
-NotificationText.Parent = NotificationFrame
-
--- Переменные для автосбора
-local isAutoFarmingAll = false
-local isAutoGrabbingRare = false
-local isESPEnabled = false
-local espConnections = {}
-local eggHighlights = {}
-local knownItems = {} -- Для отслеживания уже найденных предметов
-
--- Переменные для перетаскивания кнопки
-local isDragging = false
-local dragStart = nil
-local startPos = nil
-
--- Список редких предметов из Easter Event 2025
-local rareItemNames = {
-    "Diamond Egg", "Police Egg", "Construction Egg", "Office Egg", "Doctor Egg",
-    "Military Egg", "Experiment Egg", "Speedy Egg", "Scientist Egg", "Robot Egg",
-    "Taxi" -- Добавляем "Таксишку"
+-- Создание таблицы для хранения пресетов
+local presets = {
+    {name="pensil",grid={{"⬛","⬛","🔴","🔴","🔴","⬛","⬛"},{"⬛","⬛","🔴","🔴","🔴","⬛","⬛"},{"⬛","⬛","🤎","🤎","🤎","⬛","⬛"},{"⬛","⬛","🤎","🤎","🤎","⬛","⬛"},{"⬛","⬛","🤎","🤎","🤎","⬛","⬛"},{"🤎","🤎","🤎","🤎","🤎","🤎","🤎"},{"🤎","🤎","🤎","🤎","🤎","🤎","🤎"}}},
+    {name="lover",grid={{"⬜","⬜","⬜","⬜","⬜","⬜","⬜"},{"⬜","⬛","❤️","⬜","⬛","❤️","⬜"},{"⬜","⬛","⬛","⬜","⬛","⬛","⬜"},{"⬜","⬜","⬜","⬜","⬜","⬜","⬜"},{"⬜","⬛","⬛","⬛","⬛","⬛","⬜"},{"⬜","⬛","⬛","⬛","⬛","⬛","⬜"},{"⬜","⬜","⬛","⬛","⬛","⬜","⬜"}}},
+    {name="bad",grid={{"💚","💚","💚","💚","💚","💚","💚"},{"💚","⬛","⬛","💚","⬛","⬛","💚"},{"💚","⬛","⬛","💚","⬛","⬛","💚"},{"💚","💚","💚","💚","💚","💚","💚"},{"💚","⬛","⬛","⬛","⬛","⬛","💚"},{"💚","⬛","💚","💚","💚","⬛","💚"},{"💚","💚","💚","💚","💚","💚","💚"}}},
+    {name="bee",grid={{"💛","💛","💛","💛","💛","💛","💛"},{"⬛","⬛","💛","💛","💛","⬛","⬛"},{"⬛","⬛","💛","💛","💛","⬛","⬛"},{"⬛","⬛","💛","💛","💛","⬛","⬛"},{"⬛","⬛","💛","💛","💛","⬛","⬛"},{"💛","💛","💛","💛","💛","💛","💛"},{"💛","💛","💛","💛","💛","💛","💛"}}},
+    {name=":D",grid={{"⬜","⬛","⬛","⬜","⬛","⬛","⬜"},{"⬜","⬛","⬛","⬜","⬛","⬛","⬜"},{"⬜","⬜","⬜","⬜","⬜","⬜","⬜"},{"⬜","⬛","⬛","⬛","⬛","⬛","⬜"},{"⬜","⬛","🏮","🏮","🏮","⬛","⬜"},{"⬜","⬜","⬛","⬛","⬛","⬜","⬜"},{"⬜","⬜","⬜","⬜","⬜","⬜","⬜"}}},
+    {name="bee v2",grid={{"🧡","⬛","🧡","🧡","🧡","⬛","🧡"},{"🧡","🧡","🧡","🧡","🧡","🧡","🧡"},{"⬛","⬛","🧡","🧡","🧡","⬛","⬛"},{"⬛","💛","🧡","🧡","🧡","💛","⬛"},{"⬛","💛","🧡","🧡","🧡","💛","⬛"},{"⬛","⬛","🧡","🧡","🧡","⬛","⬛"},{"🧡","🧡","🧡","🧡","🧡","🧡","🧡"}}},
+    {name="dxbn",grid={{"⬛","⬜","⬛","⬛","⬛","⬜","⬛"},{"⬜","⬛","⬛","⬛","⬛","⬛","⬜"},{"⬛","⬜","⬜","⬜","⬜","⬜","⬛"},{"⬜","⬛","🔲","⬛","🔲","⬛","⬜"},{"⬜","⬛","⬛","⬛","⬛","⬛","⬜"},{"⬛","⬜","⬛","⬛","⬛","⬜","⬛"},{"⬛","⬛","⬜","⬜","⬜","⬛","⬛"}}},
+    {name="⚽",grid={{"⬜","⬛","⬜","⬛","⬜","⬛","⬜"},{"⬛","⬜","⬛","⬜","⬛","⬜","⬛"},{"⬜","⬛","⬜","⬛","⬜","⬛","⬜"},{"⬛","⬜","⬛","⬜","⬛","⬜","⬛"},{"⬜","⬛","⬜","⬛","⬜","⬛","⬜"},{"⬛","⬜","⬛","⬜","⬛","⬜","⬛"},{"⬜","⬛","⬜","⬛","⬜","⬛","⬜"}}},
+    {name="memer",grid={{"","","","","","",""},{"⬛","⬛","","","⬛","⬛",""},{"","","","","","",""},{"","⬛","⬛","⬛","⬛","⬛",""},{"⬛","","⬛","","⬛","","⬛"},{"⬛","","","","","","⬛"},{"","⬛","⬛","⬛","⬛","⬛",""}}},
+    {name="цветок",grid={{"⬛","⬛","⬛","❤️","⬛","⬛","⬛"},{"⬛","⬛","⬛","💚","💚","⬛","⬛"},{"⬛","⬛","⬛","💚","⬛","⬛","⬛"},{"⬜","⬜","⬜","⬜","⬜","⬜","⬜"},{"⬛","⬛","⬜","⬜","⬜","⬛","⬛"},{"⬛","⬛","⬜","⬜","⬜","⬛","⬛"},{"⬛","⬜","⬜","⬜","⬜","⬜","⬛"}}},
+    {name="hi!",grid={{"⬛","⬛","⬛","⬛","⬜","⬛","⬜"},{"⬜","⬛","⬜","⬛","⬛","⬛","⬜"},{"⬜","⬛","⬜","⬛","⬜","⬛","⬜"},{"⬜","⬜","⬜","⬛","⬜","⬛","⬜"},{"⬜","⬛","⬜","⬛","⬜","⬛","⬛"},{"⬜","⬛","⬜","⬛","⬜","⬛","⬜"},{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"}}},
+    {name=":b",grid={{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"},{"⬛","⬛","⬛","⬛","⬜","⬛","⬛"},{"⬛","⬜","⬛","⬛","⬜","⬛","⬛"},{"⬛","⬛","⬛","⬛","⬜","⬜","⬜"},{"⬛","⬛","⬛","⬛","⬜","⬛","⬜"},{"⬛","⬜","⬛","⬛","⬜","⬜","⬜"},{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"}}},
+    {name="imposter",grid={{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"},{"⬛","⬜","🔵","🔴","🔴","🔵","⬛"},{"⬛","🔵","🔵","🔴","🔴","🔵","🔵"},{"⬛","🔴","🔴","🔴","🔴","🔵","🔵"},{"⬛","🔴","🔴","🔴","🔴","🔵","🔵"},{"⬛","🔴","🔴","🔴","🔴","🔵","⬛"},{"⬛","🔴","🔴","🔴","🔴","⬛","⬛"}}},
+    {name="skull",grid={{"⬛","⬜","⬜","⬜","⬜","⬜","⬛"},{"⬜","⬛","⬛","⬜","⬛","⬛","⬜"},{"⬜","⬛","⬛","⬜","⬛","⬛","⬜"},{"⬜","⬜","⬜","⬜","⬜","⬜","⬜"},{"⬜","⬜","⬜","⬛","⬜","⬜","⬜"},{"⬛","⬜","⬜","⬜","⬜","⬜","⬛"},{"⬛","⬜","⬜","⬜","⬜","⬜","⬛"}}},
+    {name="poor",grid={{"⬛","⬛","⬛","🤎","⬛","⬛","⬛"},{"⬛","⬛","🤎","🤎","🤎","⬛","⬛"},{"⬛","🤎","🤎","🤎","🤎","🤎","⬛"},{"⬛","🤎","🔳","🤎","🔳","🤎","⬛"},{"🤎","🤎","🤎","🤎","🤎","🤎","🤎"},{"🤎","⬜","⬜","⬜","⬜","⬜","🤎"},{"🤎","🤎","⬜","⬜","⬜","🤎","🤎"}}},
+    {name="adolf",grid={{"📔","📔","📔","📔","📔","📔","📔"},{"📔","📔","📔","📔","📔","📔","📔"},{"📔","⬛","⬛","📔","⬛","⬛","📔"},{"📔","📔","📔","📔","📔","📔","📔"},{"📔","📔","⬛","⬛","⬛","📔","📔"},{"📔","⬛","⬛","⬛","⬛","⬛","📔"},{"📔","📔","📔","📔","📔","📔","📔"}}},
+    {name="noob",grid={{"🤎","🤎","🤎","🤎","🤎","🤎","🤎"},{"🤎","📔","📔","📔","📔","📔","🤎"},{"📔","⬜","⬛","📔","⬛","⬜","📔"},{"📔","📔","📔","📔","📔","📔","📔"},{"📔","📔","⬛","⬛","⬛","📔","📔"},{"📔","⬜","⬜","⬜","⬜","⬜","📔"},{"📔","📔","📔","📔","📔","📔","📔"}}},
+    {name="yea",grid={{"⬜","⬛","⬜","⬛","⬜","⬜","⬜"},{"⬛","⬜","⬛","⬛","⬜","🔲","🔲"},{"⬜","⬛","⬛","⬛","⬜","⬜","⬜"},{"⬛","⬛","⬛","⬜","⬛","⬛","⬛"},{"⬛","⬛","⬜","⬛","⬜","⬛","⬛"},{"⬛","⬜","⬜","⬜","⬜","⬜","⬛"},{"⬜","⬛","⬛","⬛","⬛","⬛","⬜"}}},
+    {name="oh",grid={{"⬛","⬜","⬜","⬛","🔲","⬛","🔲"},{"⬜","⬛","⬛","⬜","🔲","⬛","🔲"},{"⬜","⬛","⬛","⬜","🔲","🔲","🔲"},{"⬜","⬛","⬛","⬜","🔲","🔲","🔲"},{"⬜","⬛","⬛","⬜","🔲","⬛","🔲"},{"⬛","⬜","⬜","⬛","🔲","⬛","🔲"},{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"}}},
+    {name="rock",grid={{"⬛","⬜","⬛","⬛","⬛","⬜","⬛"},{"⬛","⬜","⬛","⬛","⬛","⬜","⬛"},{"⬛","⬜","⬛","⬛","⬛","⬜","⬛"},{"⬛","⬜","⬜","⬜","⬜","⬜","⬛"},{"⬜","⬜","⬜","⬜","⬜","⬜","⬛"},{"⬛","⬜","⬜","⬜","⬜","⬜","⬛"},{"⬛","⬜","⬜","⬜","⬜","⬜","⬛"}}},
+    {name="pac green",grid={{"\31","📗","📗","⬛","📗","📗","\31"},{"📗","📗","📗","📗","📗","📗","📗"},{"📗","📗","⬜","🔳","📗","⬜","🔳"},{"📗","📗","📗","📗","📗","📗","📗"},{"📗","🏮","🏮","🏮","🏮","🏮","⬛"},{"📗","📗","📗","📗","📗","📗","⬛"},{"📗","📗","📗","📗","📗","📗","📗"}}},
+    {name="fuck",grid={{"⬛","⬛","⬛","⬜","⬛","⬛","⬛"},{"⬛","⬛","⬛","⬜","⬛","⬛","⬛"},{"⬛","⬛","⬛","⬜","⬛","⬛","⬛"},{"⬛","⬜","⬜","⬜","⬜","⬛","⬛"},{"⬛","⬜","⬜","⬜","⬜","⬜","⬜"},{"⬛","⬜","⬜","⬜","⬜","⬜","⬛"},{"⬛","⬜","⬜","⬜","⬜","⬜","⬛"}}},
+    {name="svastika",grid={{"📕","�15","📕","📕","📕","📕","📕"},{"📕","⬛","📕","⬛","⬛","⬛","📕"},{"📕","⬛","📕","⬛","📕","📕","📕"},{"📕","⬛","⬛","⬛","⬛","⬛","📕"},{"📕","📕","📕","⬛","📕","⬛","📕"},{"📕","⬛","⬛","⬛","📕","⬛","📕"},{"📕","📕","📕","📕","📕","📕","📕"}}},
+    {name="heheh",grid={{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"},{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"},{"⬛","⬜","🔳","⬛","⬜","🔳","⬛"},{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"},{"⬛","⬜","⬛","⬛","⬛","⬛","⬛"},{"⬛","⬛","⬜","⬜","⬜","⬛","⬛"},{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"}}},
+    {name="18+",grid={{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"},{"⬛","⬛","⬛","⬛","⬛","⬛","🤎"},{"🤎","⬛","⬛","⬛","⬛","🤎","🤎"},{"🤎","🤎","🤎","🔴","⬛","🌸","🤎"},{"🤎","⬛","⬛","⬛","⬛","🤎","🤎"},{"⬛","⬛","⬛","⬛","⬛","⬛","🤎"},{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"}}},
+    {name="zemlya",grid={{"📘","📘","📘","📘","📒","📒","📒"},{"📘","📘","📘","📘","📘","📒","📒"},{"📘","📘","�18","📘","📘","📘","📒"},{"📘","📘","📘","📘","📘","📘","📘"},{"🤎","🤎","🤎","🤎","🤎","🤎","🤎"},{"🤎","🤎","🤎","🤎","🤎","🤎","🤎"},{"\31","\31","\31","\31","\31","\31","\31"}}},
+    {name="🤨",grid={{"📒","📒","📒","📒","⬛","📒","📒"},{"📒","⬛","⬛","📒","📒","⬛","📒"},{"📒","📒","📒","📒","📒","📒","📒"},{"📒","⬛","⬛","📒","⬛","⬛","📒"},{"📒","📒","📒","📒","📒","📒","📒"},{"📒","⬛","⬛","⬛","⬛","⬛","📒"},{"📒","📒","📒","📒","📒","📒","📒"}}},
+    {name="car",grid={{"\31","\31","\31","\31","\31","\31","\31"},{"🚦","⬛","🔵","🔴","🔴","🔴","⬛"},{"⬛","🔵","🔵","🔴","🔴","🔴","🔴"},{"🔴","🔴","🔴","🔴","🔴","🔴","🔴"},{"⬛","🔴","⬛","⬛","⬛","🔴","⬛"},{"⬜","⬛","⬜","⬛","⬜","⬛","⬜"},{"⬜","⬜","⬜","⬜","⬜","⬜","⬜"}}},
+    {name="doroga",grid={{"\31","\31","\31","\31","\31","\31","\31"},{"📘","☁️","📘","🚀","📘","☁️","📘"},{"☁️","📘","☁️","☁️","📘","✈️","☁️"},{"🚦","📘","📘","📘","📘","📘","📘"},{"🚧","🚲","🚑","📘","🚒","📘","🚗"},{"⬜","⬛","⬜","⬛","⬜","⬛","⬜"},{"⬜","⬜","⬜","⬜","⬜","⬜","⬜"}}},
+    {name="pac green v2",grid={{"⬛","📗","📗","⬛","📗","📗","⬛"},{"📗","📗","📗","📗","📗","📗","📗"},{"📗","📗","⬜","🔳","📗","⬜","🔳"},{"📗","📗","📗","📗","📗","📗","📗"},{"📗","🏮","🏮","🏮","🏮","🏮","⬛"},{"📗","📗","📗","📗","📗","📗","⬛"},{"\31","\31","\31","\31","\31","\31","\31"}}},
+    {name="sonic",grid={{"📘","📘","📒","📘","📘","📒","📘"},{"📘","📘","📘","📘","📘","📘","📘"},{"📘","📘","⬜","📘","📘","📘","⬜"},{"📘","📘","⬜","⬛","📘","⬛","⬜"},{"📘","📘","⬜","📗","⬜","📗","⬜"},{"📘","📒","📒","📒","⬛","📒","📒"},{"📘","📘","⬛","📒","📒","📒","📘"}}},
+    {name="among us face",grid={{"📕","📕","📕","📕","📕","�15","📕"},{"📕","⬛","⬛","⬛","⬛","⬛","📕"},{"📕","⬛","📘","📘","📘","⬛","📕"},{"📕","⬛","📘","📘","📘","⬛","📕"},{"📕","⬛","⬛","⬛","⬛","⬛","�15"},{"📕","�15","📕","📕","�15","�15","�15"},{"�15","�15","�15","�15","�15","�15","�15"}}},
+    {name="adolf v2",grid={{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"},{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"},{"📙","📙","📙","📙","⬛","⬛","⬛"},{"📙","⬜","⬛","📙","⬛","⬜","📙"},{"📙","📙","📙","📙","📙","📙","📙"},{"📙","📙","⬛","⬛","⬛","📙","📙"},{"📙","📙","📙","📙","📙","📙","📙"}}},
+    {name="XD",grid={{"⬜","⬛","⬜","⬛","⬜","⬜","⬛"},{"⬜","⬛","⬜","⬛","⬜","⬛","⬜"},{"⬛","⬜","⬛","⬛","⬜","⬛","⬜"},{"⬛","⬜","⬛","⬛","⬜","⬛","⬜"},{"⬜","⬛","⬜","⬛","⬜","⬜","⬜"},{"⬜","⬛","⬜","⬛","⬜","⬜","⬛"},{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"}}},
+    {name="russia",grid={{"\31","\31","\31","\31","\31","\31","\31"},{"⬜","⬜","⬜","⬜","⬜","⬜","⬜"},{"⬜","⬜","⬜","⬜","⬜","⬜","⬜"},{"📘","📘","📘","📘","📘","📘","📘"},{"📘","📘","�18","📘","📘","📘","📘"},{"�15","�15","�15","�15","�15","�15","�15"},{"�15","�15","�15","�15","�15","�15","�15"}}},
+    {name="smile",grid={{"📔","�14","�14","�14","�14","�14","�14"},{"�14","⬜","⬛","�14","�14","⬜","⬛"},{"�14","⬛","⬛","�14","�14","⬛","⬛"},{"�14","�14","�14","�14","�14","�14","�14"},{"�14","⬛","�14","�14","�14","⬛","�14"},{"�14","⬛","⬛","⬛","⬛","⬛","�14"},{"�14","�14","⬛","⬛","⬛","�14","�14"}}},
+    {name="ukraine",grid={{"📘","�18","📘","�18","📘","�18","�18"},{"�18","�18","�18","�18","�18","�18","�18"},{"�18","�18","�18","�18","�18","�18","�18"},{"�18","�18","�18","�18","�18","�18","�18"},{"📒","📒","📒","📒","📒","📒","📒"},{"📒","📒","📒","📒","📒","📒","📒"},{"📒","📒","📒","📒","📒","📒","📒"}}},
+    {name="R | U",grid={{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"},{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"},{"⬜","⬜","⬜","⬛","�18","�18","�18"},{"�18","�18","�18","⬛","�18","�18","�18"},{"�15","�15","�15","⬛","📒","📒","📒"},{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"},{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"}}},
+    {name="cow",grid={{"�15","�15","�15","⬜","⬜","⬜","�15"},{"�15","�15","�15","⬜","⬜","�15","�15"},{"⬛","⬛","�15","⬜","�15","⬛","⬛"},{"⬛","⬛","�15","�15","�15","⬛","⬛"},{"�15","�15","⬜","⬜","⬜","�15","�15"},{"�15","⬜","⬛","�14","⬛","⬜","�15"},{"�15","⬜","�14","�14","�14","⬜","�15"}}},
+    {name="cow default",grid={{"🤎","🤎","🤎","⬜","⬜","⬜","🤎"},{"🤎","🤎","🤎","⬜","⬜","🤎","🤎"},{"⬜","⬜","🤎","⬜","🤎","⬜","⬜"},{"⬛","⬜","🤎","🤎","🤎","⬜","⬛"},{"🤎","🤎","⬜","⬜","⬜","🤎","🤎"},{"🤎","⬜","⬛","�14","⬛","⬜","🤎"},{"🤎","⬜","�14","�14","�14","⬜","🤎"}}},
+    {name="овца",grid={{"⬜","⬜","⬜","⬜","⬜","⬜","⬜"},{"⬜","⬜","⬜","⬜","⬜","⬜","⬜"},{"📙","📙","📙","📙","📙","📙","📙"},{"⬛","⬜","📙","📙","📙","⬜","⬛"},{"⬜","📙","�14","�14","�14","📙","⬜"},{"⬜","📙","�14","�14","�14","📙","⬜"},{"⬜","📙","�14","�14","�14","📙","⬜"}}},
+    {name="житель",grid={{"\31","\31","\31","\31","\31","\31","\31"},{"�14","�14","�14","�14","�14","�14","�14"},{"�14","⬛","⬛","⬛","⬛","⬛","�14"},{"�14","⬜","📗","�14","📗","⬜","�14"},{"�14","�14","🤎","🤎","🤎","�14","�14"},{"�14","🍪","🤎","🤎","🤎","🍪","�14"},{"�14","�14","🤎","🤎","🤎","�14","�14 14📔","�14","🤎","🤎","🤎","📔","📔"}}},
+    {name="вумен из майна",grid={{"\31","\31","\31","\31","\31","\31","\31"},{"📙","📙","📙","📙","📒","📙","📙"},{"📙","📙","📙","📒","📒","📒","📙"},{"⬜","📗","📒","📒","📒","📗","⬜"},{"📒","📒","📒","📒","📒","📒","📒"},{"📒","📒","�14","�14","�14","📒","📒"},{"📒","📒","📒","📒","📒","📒","📒"}}},
+    {name="печенька",grid={{"🏈","🏈","🏈","🏈","🏈","🏈","🏈"},{"🏈","🏈","🏈","🏈","🏈","🏈","🏈"},{"⬛","⬜","🏈","🏈","🏈","⬛","⬜"},{"⬛","⬛","🏈","🏈","🏈","⬛","⬛"},{"🏈","🏈","🏈","⬛","⬛","🏈","🏈"},{"🏈","🏈","🏈","⬛","�15","🏈","🏈"},{"🏈","🏈","🏈","🏈","🏈","🏈","🏈"}}},
+    {name="свинка",grid={{"\31","\31","\31","\31","\31","\31","\31"},{"�14","�14","�14","�14","�14","�14","�14"},{"�14","�14","�14","�14","�14","�14","�14"},{"⬛","⬜","�14","�14","�14","⬜","⬛"},{"�14","�14","⬜","⬜","⬜","�14","�14"},{"�14","�14","📙","�14","📙","�14","�14"},{"�14","�14","⬜","⬜","⬜","�14","�14"}}},
+    {name="стив типо",grid={{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"},{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"},{"⬛","📙","📙","📙","📙","📙","⬛"},{"📙","⬜","�18","📙","�18","⬜","📙"},{"📙","📙","📙","📙","📙","📙","📙"},{"📙","⬛","📙","📙","📙","⬛","📙"},{"📙","⬛","⬛","⬛","⬛","⬛","📙"}}},
+    {name="wth",grid={{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"},{"⬛","📙","📙","📙","📙","📙","⬛"},{"📙","⬜","⬜","📙","⬜","⬜","📙"},{"📙","⬜","⬜","📙","⬜","⬜","📙"},{"📙","📙","📙","⬛","📙","📙","📙"},{"📙","⬛","📙","📙","📙","⬛","📙"},{"📙","⬛","⬛","⬛","⬛","⬛","📙"}}},
+    {name="invizer",grid={{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"},{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"},{"🎮","🎮","🎮","⬛","🎮","🎮","🎮"},{"⬛","⬜","⬜","⬛","⬜","⬜","⬛"},{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"},{"⬛","⬜","⬜","⬜","⬜","⬜","⬛"},{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"}}},
+    {name="meming",grid={{"⬜","⬜","⬜","⬜","⬜","⬜","⬜"},{"⬜","⬛","⬜","⬜","⬜","⬜","⬜"},{"⬜","⬜","⬜","⬜","⬜","⬛","⬜"},{"⬜","⬛","⬜","⬜","⬜","⬜","⬜"},{"⬜","⬜","⬛","⬜","⬜","⬛","⬛"},{"⬜","⬜","⬜","⬛","⬛","⬜","⬜"},{"⬜","⬜","⬜","⬜","⬜","⬜","⬜"}}},
+    {name="zombie",grid={{"📗","📗","📗","📗","📗","📗","📗"},{"📗","📗","📗","📗","📗","📗","📗"},{"📗","📗","📗","📗","📗","📗","📗"},{"⬛","⬛","📗","�97","�97","⬛","⬛"},{"�97","�97","⬛","⬛","⬛","�97","�97"},{"�97","⬛","�97","�97","�97","⬛","�97"},{"�97","⬛","⬛","⬛","⬛","⬛","�97"}}},
+    {name="ded",grid={{"🤎","🤎","🤎","🤎","🤎","🤎","🤎"},{"�14","�14","�14","�14","🤎","�14","�14"},{"⬛","⬛","�14","�14","�14","⬛","⬛"},{"⬜","�18","�14","�14","�14","�18","⬜"},{"�14","�14","🤎","🤎","🤎","�14","�14"},{"�14","�14","🤎","�14","🤎","�14","�14"},{"\31","\31","\31","\31","\31","\31","\31"}}},
+    {name="hz",grid={{"🤎","🤎","🤎","🤎","🤎","🤎","🤎"},{"🤎","🤎","�14","�14","�14","�14","�14"},{"⬜","⬛","�14","�14","�14","⬛","⬜"},{"⬜","⬛","�14","�14","�14","⬛","⬜"},{"�14","�14","�14","�14","�14","�14","�14"},{"�14","�14","⬜","⬜","⬜","�14","�14"},{"�14","�14","�14","�14","�14","�14","�14"}}},
+    {name="sprytel",grid={{"⬛","⬛","⬛","⬛","⬛","⬛","⬛"},{"⬛","⬛","�18","�18","�18","⬛","⬛"},{"⬛","🔳","⬜","�18","⬜","🔳","⬛"},{"⬛","⬜","⬜","�18","⬜","⬜","⬛"},{"⬛","�18","�18","�18","�18","�18","⬛"},{"⬛","⬛","�18","�18","�18","⬛","⬛"},{"⬛","⬛","⬛","�18","⬛","⬛","⬛"}}}
 }
 
--- Функция для переключения вкладок
-local function showTab(tab)
-    EggFarmTab.Visible = (tab == EggFarmTab)
-    SafetyTab.Visible = (tab == SafetyTab)
-    EggFarmTabButton.BackgroundColor3 = (tab == EggFarmTab) and Color3.fromRGB(70, 70, 70) or Color3.fromRGB(50, 50, 50)
-    SafetyTabButton.BackgroundColor3 = (tab == SafetyTab) and Color3.fromRGB(70, 70, 70) or Color3.fromRGB(50, 50, 50)
-end
+-- Премиум-пресеты
+local premiumPresets = {
+    {
+        name = "Premium Star",
+        grid = {
+            {"🌟","⬛","⬛","⬛","⬛","⬛","🌟"},
+            {"⬛","🌟","⬛","⬛","⬛","🌟","⬛"},
+            {"⬛","⬛","🌟","⬛","🌟","⬛","⬛"},
+            {"⬛","⬛","⬛","🌟","⬛","⬛","⬛"},
+            {"⬛","⬛","🌟","⬛","🌟","⬛","⬛"},
+            {"⬛","🌟","⬛","⬛","⬛","🌟","⬛"},
+            {"🌟","⬛","⬛","⬛","⬛","⬛","🌟"}
+        }
+    },
+    {
+        name = "Premium Crown",
+        grid = {
+            {"👑","⬛","⬛","⬛","⬛","⬛","👑"},
+            {"⬛","👑","⬛","⬛","⬛","👑","⬛"},
+            {"⬛","⬛","👑","⬛","👑","⬛","⬛"},
+            {"⬛","⬛","⬛","👑","⬛","⬛","⬛"},
+            {"⬛","⬛","⬛","⬛","⬛","⬛","⬛"},
+            {"⬛","⬛","⬛","⬛","⬛","⬛","⬛"},
+            {"⬛","⬛","⬛","⬛","⬛","⬛","⬛"}
+        }
+    },
+    {
+        name = "Coca-Cola",
+        grid = {
+            {"⬜","⬜","⬜","⬜","⬜","⬜","⬜"},
+            {"⬜","⬛","⬜","⬜","⬜","⬛","⬜"},
+            {"⬜","⬜","⬜","⬜","⬜","⬜","⬜"},
+            {"⬜","⬛","⬛","⬛","⬛","⬛","⬜"},
+            {"⬜","⬜","⬜","⬜","⬜","⬜","⬜"},
+            {"⬜","⬛","⬜","⬜","⬜","⬛","⬜"},
+            {"⬜","⬜","⬜","⬜","⬜","⬜","⬜"}
+        }
+    }
+}
 
--- Функция для проверки, находится ли игрок в лобби
-local function isInLobby()
-    local map = Workspace:FindFirstChild("Map")
-    if map and map.Name == "Lobby" then
-        return true
-    end
-
-    local status = ReplicatedStorage:FindFirstChild("GameStatus")
-    if status and status.Value == "Waiting" then
-        return true
-    end
-
-    for _, child in pairs(Workspace:GetChildren()) do
-        if child.Name == "Lobby" then
-            return true
-        end
-    end
-
-    return false
-end
-
--- Функция для отображения уведомления
-local function showNotification(itemName)
-    NotificationText.Text = itemName .. " has spawned!"
-    NotificationFrame.Visible = true
-
-    -- Анимация появления
-    local tweenIn = TweenService:Create(NotificationFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(1, -260, 0, 10)})
-    tweenIn:Play()
-    tweenIn.Completed:Wait()
-
-    -- Задержка перед исчезновением
-    wait(3)
-
-    -- Анимация исчезновения
-    local tweenOut = TweenService:Create(NotificationFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(1, 10, 0, 10)})
-    tweenOut:Play()
-    tweenOut.Completed:Wait()
-    NotificationFrame.Visible = false
-end
-
--- Функция для поиска ближайшего предмета
-local function findNearestItem(isRareOnly)
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
-
-    local humanoidRootPart = character.HumanoidRootPart
-    local closestItem = nil
-    local closestDistance = math.huge
-
-    for _, obj in pairs(Workspace:GetChildren()) do
-        if obj:IsA("BasePart") or obj:IsA("Model") then
-            local isItem = obj.Name:lower():find("egg") or obj.Name:lower():find("peppermint") or obj.Name == "Taxi"
-            local isRareItem = false
-            for _, rareName in pairs(rareItemNames) do
-                if obj.Name == rareName then
-                    isRareItem = true
-                    break
-                end
-            end
-
-            if isItem or isRareItem then
-                if isRareOnly and not isRareItem then
-                    continue
-                end
-                local targetPosition = obj:IsA("Model") and obj:GetPivot().Position or obj.Position
-                local distance = (targetPosition - humanoidRootPart.Position).Magnitude
-                if distance < closestDistance then
-                    closestDistance = distance
-                    closestItem = obj
-                end
-            end
-        end
-    end
-
-    return closestItem
-end
-
--- Функция для автосбора всех предметов
-local function autoFarmAllItems()
-    while isAutoFarmingAll do
-        local character = LocalPlayer.Character
-        if not character or not character:FindFirstChild("HumanoidRootPart") then
-            wait(1)
-            continue
-        end
-
-        if isInLobby() then
-            wait(1)
-            continue
-        end
-
-        local humanoidRootPart = character.HumanoidRootPart
-        local nearestItem = findNearestItem(false)
-
-        if nearestItem then
-            local targetPosition = nearestItem:IsA("Model") and nearestItem:GetPivot().Position or nearestItem.Position
-            humanoidRootPart.CFrame = CFrame.new(targetPosition + Vector3.new(0, 3, 0))
-            wait(0.2)
-
-            if nearestItem:FindFirstChildOfClass("ProximityPrompt") then
-                fireproximityprompt(nearestItem:FindFirstChildOfClass("ProximityPrompt"))
-            elseif nearestItem:FindFirstChild("TouchInterest") then
-                humanoidRootPart.CFrame = CFrame.new(targetPosition)
-            end
-
-            nearestItem:Destroy()
-            wait(0.3)
-        else
-            wait(0.5)
-        end
-    end
-end
-
--- Функция для автосбора редких предметов с телепортацией
-local function autoGrabRareItem()
-    while isAutoGrabbingRare do
-        local character = LocalPlayer.Character
-        if not character or not character:FindFirstChild("HumanoidRootPart") then
-            wait(1)
-            continue
-        end
-
-        if isInLobby() then
-            wait(1)
-            continue
-        end
-
-        local humanoidRootPart = character.HumanoidRootPart
-        local nearestRareItem = findNearestItem(true)
-
-        if nearestRareItem then
-            local targetPosition = nearestRareItem:IsA("Model") and nearestRareItem:GetPivot().Position or nearestRareItem.Position
-            humanoidRootPart.CFrame = CFrame.new(targetPosition + Vector3.new(0, 3, 0))
-            wait(0.5)
-            if nearestRareItem:FindFirstChildOfClass("ProximityPrompt") then
-                fireproximityprompt(nearestRareItem:FindFirstChildOfClass("ProximityPrompt"))
-            elseif nearestRareItem:FindFirstChild("TouchInterest") then
-                humanoidRootPart.CFrame = CFrame.new(targetPosition)
-            end
-            nearestRareItem:Destroy()
-            wait(0.5)
-        else
-            wait(1)
-        end
-    end
-end
-
--- Функция для обновления WH (ESP) предметов
-local function updateItemESP()
-    for _, highlight in pairs(eggHighlights) do
-        highlight:Destroy()
-    end
-    eggHighlights = {}
-
-    for _, obj in pairs(Workspace:GetChildren()) do
-        if obj:IsA("BasePart") or obj:IsA("Model") then
-            local isRareItem = false
-            for _, rareName in pairs(rareItemNames) do
-                if obj.Name == rareName then
-                    isRareItem = true
-                    break
-                end
-            end
-
-            if isRareItem then
-                local highlight = Instance.new("Highlight")
-                highlight.Name = "ItemHighlight"
-                highlight.Adornee = obj
-                highlight.FillTransparency = 0.3
-                highlight.OutlineTransparency = 0
-                highlight.FillColor = Color3.fromRGB(255, 165, 0)
-                highlight.Parent = obj
-                table.insert(eggHighlights, highlight)
-            end
-        end
-    end
-end
-
--- Функция для отслеживания спавна редких предметов и показа уведомлений
-local function monitorRareItems()
-    Workspace.DescendantAdded:Connect(function(descendant)
-        if descendant:IsA("BasePart") or descendant:IsA("Model") then
-            for _, rareName in pairs(rareItemNames) do
-                if descendant.Name == rareName and not knownItems[descendant] then
-                    knownItems[descendant] = true
-                    spawn(function()
-                        showNotification(rareName)
-                    end)
-                    break
-                end
-            end
-        end
-    end)
-
-    Workspace.DescendantRemoving:Connect(function(descendant)
-        if knownItems[descendant] then
-            knownItems[descendant] = nil
-        end
-    end)
-end
-
--- Функция для включения/выключения ESP
-local function toggleESP()
-    if isESPEnabled then
-        for _, connection in pairs(espConnections) do
-            connection:Disconnect()
-        end
-        espConnections = {}
-        for _, player in pairs(Players:GetPlayers()) do
-            if player.Character then
-                local highlight = player.Character:FindFirstChild("ESPHighlight")
-                if highlight then
-                    highlight:Destroy()
-                end
-            end
-        end
-        for _, highlight in pairs(eggHighlights) do
-            highlight:Destroy()
-        end
-        eggHighlights = {}
-        isESPEnabled = false
-        ESPButton.Text = "ESP: OFF"
-        ESPButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+local function chatMessage(str)
+    str = tostring(str)
+    if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+        TextChatService.TextChannels.RBXGeneral:SendAsync(str)
     else
-        isESPEnabled = true
-        ESPButton.Text = "ESP: ON"
-        ESPButton.BackgroundColor3 = Color3.fromRGB(0, 255, 120)
+        ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(str, "All")
+    end
+end
 
-        local function updateESP()
-            for _, player in pairs(Players:GetPlayers()) do
-                if player == LocalPlayer or not player.Character then continue end
+local function createButton(text, parent, size, position, backgroundColor)
+    local button = Instance.new("TextButton")
+    button.Text = text
+    button.Size = size
+    button.Position = position
+    button.BackgroundColor3 = backgroundColor or Color3.fromRGB(60, 60, 60)
+    button.BorderSizePixel = 0
+    button.Font = Enum.Font.GothamSemibold
+    button.TextSize = 14
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.AutoButtonColor = true
+    button.Parent = parent
 
-                local character = player.Character
-                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-                if not humanoidRootPart then continue end
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = button
 
-                local highlight = character:FindFirstChild("ESPHighlight") or Instance.new("Highlight")
-                highlight.Name = "ESPHighlight"
-                highlight.Adornee = character
-                highlight.FillTransparency = 0.5
-                highlight.OutlineTransparency = 0
-                highlight.Parent = character
+    local originalColor = button.BackgroundColor3
+    button.MouseEnter:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.3), {
+            BackgroundColor3 = backgroundColor and backgroundColor:Lerp(Color3.fromRGB(255, 255, 255), 0.2) or Color3.fromRGB(80, 80, 80)
+        }):Play()
+    end)
 
-                if character:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife") then
-                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                elseif character:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun") then
-                    highlight.FillColor = Color3.fromRGB(0, 0, 255)
-                else
-                    highlight.FillColor = Color3.fromRGB(0, 255, 0)
-                end
+    button.MouseLeave:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.3), {
+            BackgroundColor3 = originalColor
+        }):Play()
+    end)
+
+    return button
+end
+
+local function addShadow(frame)
+    local shadow = Instance.new("ImageLabel")
+    shadow.Size = UDim2.new(1, 20, 1, 20)
+    shadow.Position = UDim2.new(0, -10, 0, -10)
+    shadow.BackgroundTransparency = 1
+    shadow.Image = "rbxassetid://297774371"
+    shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+    shadow.ImageTransparency = 0.8
+    shadow.ZIndex = frame.ZIndex - 1
+    shadow.Parent = frame
+end
+
+local drawingGui = nil
+local selectedEmoji = "❓"
+local interfaceEnabled = false
+local savedGrid = {}
+local actionBound = false
+local drawing = false
+
+local function savePresetsToFile()
+    local success, errorMessage = pcall(function()
+        local data = {basic = presets, premium = premiumPresets}
+        local jsonString = HttpService:JSONEncode(data)
+        writefile(PRESET_FILE_NAME, jsonString)
+    end)
+    if not success then
+        warn("Error saving presets:", errorMessage)
+    end
+end
+
+local function loadPresetsFromFile()
+    local success, fileContent = pcall(function()
+        return readfile(PRESET_FILE_NAME)
+    end)
+
+    if success and fileContent then
+        local decodeSuccess, decodedData = pcall(function()
+            return HttpService:JSONDecode(fileContent)
+        end)
+
+        if decodeSuccess and decodedData then
+            if decodedData.basic then
+                presets = decodedData.basic
             end
-
-            updateItemESP()
+            if decodedData.premium then
+                premiumPresets = decodedData.premium
+            end
+        else
+            warn("Error decoding presets: ", decodedData)
         end
+    else
+        warn("Error loading or reading the file:", fileContent)
+    end
+end
 
-        updateESP()
+local function createDrawingInterface()
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "DrawingInterface"
+    gui.DisplayOrder = 2
+    gui.ResetOnSpawn = false
+    gui.Parent = CoreGui
 
-        -- Обновление ESP раз в 0.5 секунды для оптимизации
-        table.insert(espConnections, RunService.Heartbeat:Connect(function()
-            if tick() % 0.5 < 0.1 then
-                updateESP()
-            end
-        end))
+    local isTouchEnabled = UserInputService.TouchEnabled
+    local mainFrameScale = isTouchEnabled and 0.7 or 1
 
-        table.insert(espConnections, Players.PlayerAdded:Connect(function(player)
-            player.CharacterAdded:Connect(function()
-                wait(0.1)
-                updateESP()
+    local baseWidth = 300
+    local baseHeight = 490
+    local baseX = -150
+    local baseY = -245
+
+    local scaledWidth = baseWidth * mainFrameScale
+    local scaledHeight = baseHeight * mainFrameScale
+    local scaledX = baseX * mainFrameScale
+    local scaledY = baseY * mainFrameScale
+
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, scaledWidth, 0, scaledHeight)
+    mainFrame.Position = UDim2.new(0.5, scaledX, 0.5, scaledY)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Parent = gui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10 * mainFrameScale)
+    corner.Parent = mainFrame
+
+    addShadow(mainFrame)
+
+    local titleBarHeight = 30 * mainFrameScale
+    local titleBar = Instance.new("Frame")
+    titleBar.Size = UDim2.new(1, 0, 0, titleBarHeight)
+    titleBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    titleBar.BorderSizePixel = 0
+    titleBar.Parent = mainFrame
+
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 10 * mainFrameScale)
+    titleCorner.Parent = titleBar
+
+    local titleTextOffset = 10 * mainFrameScale
+    local titleText = Instance.new("TextLabel")
+    titleText.Text = "Chat Draw | Avtor Scripts"
+    titleText.Size = UDim2.new(1, -40 * mainFrameScale, 1, 0)
+    titleText.Position = UDim2.new(0, titleTextOffset, 0, 0)
+    titleText.BackgroundTransparency = 1
+    titleText.Font = Enum.Font.Gotham
+    titleText.TextSize = 14 * mainFrameScale
+    titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleText.TextXAlignment = Enum.TextXAlignment.Left
+    titleText.Parent = titleBar
+
+    local GRID_SIZE = 7
+    local CELL_SIZE = 35 * mainFrameScale
+    local grid = {}
+    local cells = {}
+
+    local gridOffsetX = -(GRID_SIZE * CELL_SIZE) / 2
+    local gridOffsetY = 40 * mainFrameScale
+
+    local gridFrame = Instance.new("Frame")
+    gridFrame.Size = UDim2.new(0, GRID_SIZE * CELL_SIZE, 0, GRID_SIZE * CELL_SIZE)
+    gridFrame.Position = UDim2.new(0.5, gridOffsetX, 0, gridOffsetY)
+    gridFrame.BackgroundTransparency = 1
+    gridFrame.Parent = mainFrame
+
+    local function updateCell(cell, i, j)
+        grid[i][j] = selectedEmoji
+        cell.Text = selectedEmoji
+        local scaleUp = TweenService:Create(cell, TweenInfo.new(0.1), {Size = UDim2.new(0, CELL_SIZE, 0, CELL_SIZE)})
+        local scaleDown = TweenService:Create(cell, TweenInfo.new(0.1), {Size = UDim2.new(0, CELL_SIZE - 2 * mainFrameScale, 0, CELL_SIZE - 2 * mainFrameScale)})
+        scaleUp:Play()
+        scaleUp.Completed:Connect(function()
+            scaleDown:Play()
+        end)
+    end
+
+    for i = 1, GRID_SIZE do
+        grid[i] = {}
+        cells[i] = {}
+        for j = 1, GRID_SIZE do
+            local cellOffsetX = (j - 1) * CELL_SIZE + 1 * mainFrameScale
+            local cellOffsetY = (i - 1) * CELL_SIZE + 1 * mainFrameScale
+            local cell = createButton("", gridFrame, UDim2.new(0, CELL_SIZE - 2 * mainFrameScale, 0, CELL_SIZE - 2 * mainFrameScale), UDim2.new(0, cellOffsetX, 0, cellOffsetY), Color3.fromRGB(45, 45, 45))
+            cell.Font = Enum.Font.Gotham
+            cell.TextSize = 20 * mainFrameScale
+            cell.Text = ""
+
+            grid[i][j] = ""
+            cells[i][j] = cell
+
+            cell.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    drawing = true
+                    updateCell(cell, i, j)
+                end
             end)
-        end))
-    end
-end
-
--- Анимация открытия/закрытия хаба
-local function toggleMenu()
-    if MainFrame.Visible then
-        local tween = TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, -150, 0.5, -150), Size = UDim2.new(0, 0, 0, 0)})
-        tween:Play()
-        tween.Completed:Wait()
-        MainFrame.Visible = false
-    else
-        MainFrame.Visible = true
-        local tween = TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, -150, 0.5, -150), Size = UDim2.new(0, 300, 0, 300)})
-        tween:Play()
-    end
-end
-
--- Обработка перетаскивания кнопки
-UserInputService.InputBegan:Connect(function(input)
-    if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and not isDragging then
-        local position = input.Position
-        local buttonPos = ToggleButton.AbsolutePosition
-        local buttonSize = ToggleButton.AbsoluteSize
-        if position.X >= buttonPos.X and position.X <= buttonPos.X + buttonSize.X and position.Y >= buttonPos.Y and position.Y <= buttonPos.Y + buttonSize.Y then
-            isDragging = true
-            dragStart = Vector2.new(position.X, position.Y)
-            startPos = ToggleButton.Position
+            cell.InputChanged:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                    if drawing then
+                        updateCell(cell, i, j)
+                    end
+                end
+            end)
+            cell.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    drawing = false
+                end
+            end)
         end
     end
-end)
 
-UserInputService.InputChanged:Connect(function(input)
-    if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local position = input.Position
-        local delta = Vector2.new(position.X, position.Y) - dragStart
-        local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-
-        local screenSize = ScreenGui.AbsoluteSize
-        local buttonSize = ToggleButton.AbsoluteSize
-        local minX = 0
-        local minY = 0
-        local maxX = screenSize.X - buttonSize.X
-        local maxY = screenSize.Y - buttonSize.Y
-
-        newPos = UDim2.new(
-            0, math.clamp(newPos.X.Offset, minX, maxX),
-            0, math.clamp(newPos.Y.Offset, minY, maxY)
-        )
-
-        ToggleButton.Position = newPos
+    if #savedGrid > 0 then
+        for x = 1, GRID_SIZE do
+            for y = 1, GRID_SIZE do
+                grid[x][y] = savedGrid[x][y]
+                gridFrame:GetChildren()[(x - 1) * GRID_SIZE + y].Text = savedGrid[x][y]
+            end
+        end
     end
-end)
 
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        isDragging = false
+    local emojiScrollFrameHeight = 40 * mainFrameScale
+    local emojiScrollFrameOffsetY = 295 * mainFrameScale
+
+    local emojiScrollFrame = Instance.new("ScrollingFrame")
+    emojiScrollFrame.Size = UDim2.new(0.95, 0, 0, emojiScrollFrameHeight)
+    emojiScrollFrame.Position = UDim2.new(0.025, 0, 0, emojiScrollFrameOffsetY)
+    emojiScrollFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    emojiScrollFrame.BorderSizePixel = 0
+    emojiScrollFrame.ScrollBarThickness = 4 * mainFrameScale
+    emojiScrollFrame.ScrollingDirection = Enum.ScrollingDirection.X
+    emojiScrollFrame.Parent = mainFrame
+
+    local emojiScrollFrameCorner = Instance.new("UICorner")
+    emojiScrollFrameCorner.CornerRadius = UDim.new(0, 4 * mainFrameScale)
+    emojiScrollFrameCorner.Parent = emojiScrollFrame
+
+    local emojis = {"","⬜", "⬛", "🔲", "🔳", "🏮", "🔴", "🔵", "💜", "🤎", "❤️", "💛", "💚", "💙", "💖", "🧡", "🌸", "🌺", "🌻", "🌼", "🌷", "🌹", "�15", "📙", "📒", "📗", "�18", "�14", "📚", "📖", "❓", "❗", "💯", "🔥", "⭐", "✨", "🌙", "🌞", "☁️", "🌈", "🍕", "🍔", "🍟", "🍦", "🍩", "🍪", "☕", "🍺", "🍷", "🍸", "⚽", "🏀", "🏈", "⚾", "🎾", "🎮", "🎧", "🎵", "🎸", "🎻", "🎺", "🎷", "🎤", "🎨", "📷", "💡", "💻", "📱", "⏰", "🔒", "🔑", "🎁", "🎈", "🎉", "🎀", "📌", "📍", "🗺️", "✂️", "✏️", "✒️", "📝", "📖", "🔒", "🔔", "📞", "🛒", "💰", "💳", "💎", "🔨", "🔧", "🧰", "🧱", "🧲", "🧪", "🔬", "🔭", "🚑", "🚒", "🚓", "🚕", "🚗", "🚌", "🚲", "🚂", "✈️", "🚢", "🚀", "🛸", "🗿", "🚧", "🚦", "🛑", "🚫", "✅", "❌", "❓", "❗", "💯", "🔥", "⭐", "✨", "🌙", "🌞", "☁️", "🌈", "🍕", "🍔", "🍟", "🍦", "🍩", "🍪", "☕", "🍺", "🍷", "🍸", "⚽", "🏀", "🏈", "⚾", "🎾", "🎮", "🎧", "🎵", "🎸", "🎻", "🎺", "🎷", "🎤", "🎨", "📷", "💡", "💻", "📱", "⏰", "🔒", "🔑", "🎁", "🎈", "🎉", "🎀", "📌", "📍", "🗺️", "✂️", "✏️", "✒️", "📝", "📖", "🔒", "🔔", "📞", "🛒", "💰", "💳", "💎", "🔨", "🔧", "🧰", "🧱", "🧲", "🧪", "🔬", "🔭", "🚑", "🚒", "🚓", "🚕", "🚗", "🚌", "🚲", "🚂", "✈️", "🚢", "🚀", "🛸", "🗿", "🚧", "🚦", "🛑", "🚫", "✅", "❌"}
+    local emojiButtons = {}
+
+    local totalWidth = #emojis * 35 * mainFrameScale
+    emojiScrollFrame.CanvasSize = UDim2.new(0, totalWidth, 0, 0)
+
+    for i, emoji in ipairs(emojis) do
+        local emojiButtonOffsetX = (i - 1) * 35 * mainFrameScale + 5 * mainFrameScale
+        local emojiButton = createButton(emoji, emojiScrollFrame, UDim2.new(0, 30 * mainFrameScale, 0, 30 * mainFrameScale), UDim2.new(0, emojiButtonOffsetX, 0, 5 * mainFrameScale), Color3.fromRGB(60, 60, 60))
+        emojiButton.Font = Enum.Font.Gotham
+        emojiButton.TextSize = 20 * mainFrameScale
+
+        table.insert(emojiButtons, emojiButton)
+
+        emojiButton.MouseButton1Click:Connect(function()
+            selectedEmoji = emoji
+            for _, btn in ipairs(emojiButtons) do
+                btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            end
+            emojiButton.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+        end)
     end
-end)
 
--- Обработчики кнопок
-EggFarmTabButton.MouseButton1Click:Connect(function()
-    showTab(EggFarmTab)
-end)
+    local tabFrame = Instance.new("Frame")
+    tabFrame.Size = UDim2.new(0.95, 0, 0, 30 * mainFrameScale)
+    tabFrame.Position = UDim2.new(0.025, 0, 0, 285 * mainFrameScale)
+    tabFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    tabFrame.BorderSizePixel = 0
+    tabFrame.Parent = mainFrame
 
-SafetyTabButton.MouseButton1Click:Connect(function()
-    showTab(SafetyTab)
-end)
+    local tabFrameCorner = Instance.new("UICorner")
+    tabFrameCorner.CornerRadius = UDim.new(0, 6 * mainFrameScale)
+    tabFrameCorner.Parent = tabFrame
 
-AutoFarmAllButton.MouseButton1Click:Connect(function()
-    isAutoFarmingAll = not isAutoFarmingAll
-    AutoFarmAllButton.Text = "Auto Farm All Eggs: " .. (isAutoFarmingAll and "ON" or "OFF")
-    AutoFarmAllButton.BackgroundColor3 = isAutoFarmingAll and Color3.fromRGB(0, 255, 120) or Color3.fromRGB(0, 120, 255)
-    if isAutoFarmingAll then
-        isAutoGrabbingRare = false
-        AutoGrabRareButton.Text = "Auto Grab Rare Item: OFF"
-        AutoGrabRareButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-        spawn(autoFarmAllItems)
+    local basicTabButton = createButton("Basic", tabFrame, UDim2.new(0.48, 0, 1, 0), UDim2.new(0, 0, 0, 0), Color3.fromRGB(60, 60, 60))
+    local premiumTabButton = createButton("Premium", tabFrame, UDim2.new(0.48, 0, 1, 0), UDim2.new(0.52, 0, 0, 0), Color3.fromRGB(60, 60, 60))
+
+    local presetFrameHeight = 125 * mainFrameScale
+    local presetFrameOffsetY = 340 * mainFrameScale
+
+    local basicPresetFrame = Instance.new("Frame")
+    basicPresetFrame.Size = UDim2.new(0.95, 0, 0, presetFrameHeight)
+    basicPresetFrame.Position = UDim2.new(0.025, 0, 0, presetFrameOffsetY)
+    basicPresetFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    basicPresetFrame.BorderSizePixel = 0
+    basicPresetFrame.Parent = mainFrame
+    basicPresetFrame.Visible = true
+
+    local basicPresetFrameCorner = Instance.new("UICorner")
+    basicPresetFrameCorner.CornerRadius = UDim.new(0, 6 * mainFrameScale)
+    basicPresetFrameCorner.Parent = basicPresetFrame
+
+    local premiumPresetFrame = Instance.new("Frame")
+    premiumPresetFrame.Size = UDim2.new(0.95, 0, 0, presetFrameHeight)
+    premiumPresetFrame.Position = UDim2.new(0.025, 0, 0, presetFrameOffsetY)
+    premiumPresetFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    premiumPresetFrame.BorderSizePixel = 0
+    premiumPresetFrame.Parent = mainFrame
+    premiumPresetFrame.Visible = false
+
+    local premiumPresetFrameCorner = Instance.new("UICorner")
+    premiumPresetFrameCorner.CornerRadius = UDim.new(0, 6 * mainFrameScale)
+    premiumPresetFrameCorner.Parent = premiumPresetFrame
+
+    local presetInputHeight = 30 * mainFrameScale
+    local presetInputOffsetY = 10 * mainFrameScale
+
+    local presetInput = Instance.new("TextBox")
+    presetInput.Size = UDim2.new(0.7, 0, 0, presetInputHeight)
+    presetInput.Position = UDim2.new(0.025, 0, 0, presetInputOffsetY)
+    presetInput.PlaceholderText = "Enter preset name..."
+    presetInput.Text = ""
+    presetInput.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    presetInput.BorderSizePixel = 0
+    presetInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+    presetInput.Font = Enum.Font.Gotham
+    presetInput.TextSize = 14 * mainFrameScale
+    presetInput.Parent = basicPresetFrame
+
+    local inputCorner = Instance.new("UICorner")
+    inputCorner.CornerRadius = UDim.new(0, 4 * mainFrameScale)
+    inputCorner.Parent = presetInput
+
+    local savePresetButtonSize = 30 * mainFrameScale
+    local savePresetButtonOffsetY = 10 * mainFrameScale
+    local savePresetButton = createButton("Save", basicPresetFrame, UDim2.new(0.225, 0, 0, savePresetButtonSize), UDim2.new(0.75, 0, 0, savePresetButtonOffsetY), Color3.fromRGB(70, 170, 70))
+
+    local presetListHeight = 80 * mainFrameScale
+    local presetListOffsetY = 45 * mainFrameScale
+    local basicPresetList = Instance.new("ScrollingFrame")
+    basicPresetList.Size = UDim2.new(0.95, 0, 0, presetListHeight)
+    basicPresetList.Position = UDim2.new(0.025, 0, 0, presetListOffsetY)
+    basicPresetList.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    basicPresetList.BorderSizePixel = 0
+    basicPresetList.ScrollBarThickness = 4 * mainFrameScale
+    basicPresetList.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
+    basicPresetList.ScrollBarImageTransparency = 0.5
+    basicPresetList.Parent = basicPresetFrame
+
+    local basicListCorner = Instance.new("UICorner")
+    basicListCorner.CornerRadius = UDim.new(0, 4 * mainFrameScale)
+    basicListCorner.Parent = basicPresetList
+
+    local premiumPresetList = Instance.new("ScrollingFrame")
+    premiumPresetList.Size = UDim2.new(0.95, 0, 0, presetListHeight)
+    premiumPresetList.Position = UDim2.new(0.025, 0, 0, presetListOffsetY)
+    premiumPresetList.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    premiumPresetList.BorderSizePixel = 0
+    premiumPresetList.ScrollBarThickness = 4 * mainFrameScale
+    premiumPresetList.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
+    premiumPresetList.ScrollBarImageTransparency = 0.5
+    premiumPresetList.Parent = premiumPresetFrame
+
+    local premiumListCorner = Instance.new("UICorner")
+    premiumListCorner.CornerRadius = UDim.new(0, 4 * mainFrameScale)
+    premiumListCorner.Parent = premiumPresetList
+
+    local function updatePresetList(isPremium)
+        local targetList = isPremium and premiumPresetList or basicPresetList
+        local targetPresets = isPremium and premiumPresets or presets
+
+        for _, child in ipairs(targetList:GetChildren()) do
+            if child:IsA("TextButton") then
+                child:Destroy()
+            end
+        end
+
+        local yOffset = 5 * mainFrameScale
+        for i, presetData in ipairs(targetPresets) do
+            local name = presetData.name
+            local preset = presetData.grid
+            local presetButtonHeight = 25 * mainFrameScale
+            local presetButton = createButton(name, targetList, UDim2.new(0.9, 0, 0, presetButtonHeight), UDim2.new(0.05, 0, 0, yOffset))
+
+            presetButton.MouseButton1Click:Connect(function()
+                if isPremium and not isPremiumPlayer() then
+                    MarketplaceService:PromptGamePassPurchase(Players.LocalPlayer, PREMIUM_GAMEPASS_ID)
+                    return
+                end
+                for x = 1, GRID_SIZE do
+                    for y = 1, GRID_SIZE do
+                        grid[x][y] = preset[x][y]
+                        gridFrame:GetChildren()[(x - 1) * GRID_SIZE + y].Text = preset[x][y]
+                    end
+                end
+            end)
+
+            if not isPremium then
+                local deleteButtonSize = 20 * mainFrameScale
+                local deleteButtonOffsetX = -25 * mainFrameScale
+                local deleteButtonOffsetY = 2 * mainFrameScale
+                local deleteButton = createButton("X", presetButton, UDim2.new(0, deleteButtonSize, 0, deleteButtonSize), UDim2.new(1, deleteButtonOffsetX, 0, deleteButtonOffsetY), Color3.fromRGB(200, 50, 50))
+                deleteButton.TextSize = 12 * mainFrameScale
+                deleteButton.MouseButton1Click:Connect(function()
+                    table.remove(presets, i)
+                    updatePresetList(false)
+                    savePresetsToFile()
+                end)
+            end
+
+            yOffset = yOffset + 30 * mainFrameScale
+        end
+
+        targetList.CanvasSize = UDim2.new(0, 0, 0, yOffset)
     end
-end)
 
-AutoGrabRareButton.MouseButton1Click:Connect(function()
-    isAutoGrabbingRare = not isAutoGrabbingRare
-    AutoGrabRareButton.Text = "Auto Grab Rare Item: " .. (isAutoGrabbingRare and "ON" or "OFF")
-    AutoGrabRareButton.BackgroundColor3 = isAutoGrabbingRare and Color3.fromRGB(0, 255, 120) or Color3.fromRGB(0, 120, 255)
-    if isAutoGrabbingRare then
-        isAutoFarmingAll = false
-        AutoFarmAllButton.Text = "Auto Farm All Eggs: OFF"
-        AutoFarmAllButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-        spawn(autoGrabRareItem)
+    savePresetButton.MouseButton1Click:Connect(function()
+        local name = presetInput.Text
+        if name ~= "" then
+            local currentGrid = {}
+            for x = 1, GRID_SIZE do
+                currentGrid[x] = {}
+                for y = 1, GRID_SIZE do
+                    currentGrid[x][y] = grid[x][y]
+                end
+            end
+
+            table.insert(presets, {name = name, grid = currentGrid})
+            savePresetsToFile()
+            presetInput.Text = ""
+            updatePresetList(false)
+        end
+    end)
+
+    basicTabButton.MouseButton1Click:Connect(function()
+        basicPresetFrame.Visible = true
+        premiumPresetFrame.Visible = false
+        basicTabButton.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+        premiumTabButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        updatePresetList(false)
+    end)
+
+    premiumTabButton.MouseButton1Click:Connect(function()
+        basicPresetFrame.Visible = false
+        premiumPresetFrame.Visible = true
+        basicTabButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        premiumTabButton.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+        updatePresetList(true)
+    end)
+
+    local actionButtonsHeight = 35 * mainFrameScale
+    local actionButtonsOffsetY = 455 * mainFrameScale
+
+    local actionButtons = Instance.new("Frame")
+    actionButtons.Size = UDim2.new(0.95, 0, 0, actionButtonsHeight)
+    actionButtons.Position = UDim2.new(0.025, 0, 0, actionButtonsOffsetY)
+    actionButtons.BackgroundTransparency = 1
+    actionButtons.Parent = mainFrame
+
+    local sendButton = createButton("Send", actionButtons, UDim2.new(0.48, 0, 1, 0), UDim2.new(0, 0, 0, 0), Color3.fromRGB(70, 170, 70))
+    sendButton.MouseButton1Click:Connect(function()
+        local art = ""
+        for x = 1, GRID_SIZE do
+            for y = 1, GRID_SIZE do
+                art = art .. (grid[x][y] ~= "" and grid[x][y] or "⬜")
+            end
+            if x < GRID_SIZE then
+                art = art .. NEWLINE
+            end
+        end
+        chatMessage(INVISIBLE_CHAR .. string.rep(NEWLINE, 8) .. art)
+    end)
+
+    local clearButton = createButton("Clear", actionButtons, UDim2.new(0.48, 0, 1, 0), UDim2.new(0.52, 0, 0, 0), Color3.fromRGB(170, 70, 70))
+    clearButton.MouseButton1Click:Connect(function()
+        for x = 1, GRID_SIZE do
+            for y = 1, GRID_SIZE do
+                grid[x][y] = ""
+                gridFrame:GetChildren()[(x - 1) * GRID_SIZE + y].Text = ""
+            end
+        end
+    end)
+
+    local dragging = false
+    local dragInput
+    local dragStart
+    local startPos
+
+    local function update(input)
+        local delta = input.Position - dragStart
+        local position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+
+        local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        TweenService:Create(mainFrame, tweenInfo, {Position = position}):Play()
     end
+
+    titleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = mainFrame.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    titleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            update(input)
+        end
+    end)
+
+    gui.DescendantRemoving:Connect(function(descendant)
+        if descendant == gui then
+            savedGrid = {}
+            for x = 1, GRID_SIZE do
+                savedGrid[x] = {}
+                for y = 1, GRID_SIZE do
+                    savedGrid[x][y] = grid[x][y]
+                end
+            end
+        end
+    end)
+
+    updatePresetList(false)
+
+    return gui
+end
+
+loadPresetsFromFile()
+
+drawingGui = createDrawingInterface()
+drawingGui.Enabled = true
+interfaceEnabled = true
+
+local ScreenGui1 = Instance.new("ScreenGui")
+ScreenGui1.Parent = game.CoreGui
+
+local TextButton1 = Instance.new("TextButton")
+TextButton1.Parent = ScreenGui1
+TextButton1.Size = UDim2.new(0, 50, 0, 50)
+TextButton1.Position = UDim2.new(0.21, 0, -0.14)
+TextButton1.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+TextButton1.BackgroundTransparency = 0.3
+TextButton1.BorderSizePixel = 0
+TextButton1.Text = "🖌"
+TextButton1.TextColor3 = Color3.fromRGB(242, 243, 243)
+TextButton1.TextSize = 18
+
+local UICorner1 = Instance.new("UICorner")
+UICorner1.Parent = TextButton1
+UICorner1.CornerRadius = UDim.new(0.5, 0)
+
+local function toggleInterface()
+    interfaceEnabled = not interfaceEnabled
+    drawingGui.Enabled = interfaceEnabled
+end
+
+TextButton1.MouseButton1Click:Connect(function()
+    toggleInterface()
 end)
-
-ESPButton.MouseButton1Click:Connect(toggleESP)
-
-ToggleButton.MouseButton1Click:Connect(toggleMenu)
-
--- Обработка смерти игрока
-LocalPlayer.CharacterAdded:Connect(function()
-    wait(1)
-    if isAutoFarmingAll and not isInLobby() then
-        spawn(autoFarmAllItems)
-    end
-end)
-
--- Запуск мониторинга редких предметов
-monitorRareItems()
-
--- Уведомление о запуске скрипта
-print("MM2 Easter Egg Farm Script with GUI by Fills is running!")
